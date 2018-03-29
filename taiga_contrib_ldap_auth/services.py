@@ -54,7 +54,7 @@ def ldap_login_func(request):
     username = request.DATA.get('username', None)
     password = request.DATA.get('password', None)
 
-    email, full_name = connector.login(username=username, password=password)
-    user = ldap_register(username=username, email=email, full_name=full_name)
+    username, email, full_name, is_admin = connector.login(username=username, password=password)
+    user = ldap_register(username=username, email=email, full_name=full_name, is_superuser=is_admin)
     data = make_auth_response_data(user)
     return data
