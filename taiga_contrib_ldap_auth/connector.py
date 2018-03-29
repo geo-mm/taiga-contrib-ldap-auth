@@ -46,7 +46,7 @@ def getAttrByName(resp, prop):
     try:
        ret = resp.get('raw_attributes').get(prop)[0].decode('utf-8')
        return ret
-    except Exception e:
+    except Exception as e:
        return ''
 
 
