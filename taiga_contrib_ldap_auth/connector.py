@@ -49,35 +49,41 @@ def getAttrByName(resp, prop):
     except Exception as e:
        return ''
 
+def emptyStr(string):
+    return string is None or string == ''
 
 def login(username: str, password: str) -> tuple:
-
     try:
-        if SERVER.lower().startswith("ldaps://"):
-            server = Server(SERVER, port = PORT, get_info = NONE, use_ssl = True) 
-        else:
-            server = Server(SERVER, port = PORT, get_info = NONE, use_ssl = False)  # define an unsecure LDAP server, requesting info on DSE and schema
+        # define an unsecure LDAP server, requesting info on DSE and schema
+        server = Server(SERVER, port = PORT, get_info = NONE, use_ssl = SERVER.lower().startswith("ldaps://"))
 
-        c = None
+        (_user, _pass, _auth) = (None, None, ANONYMOUS) if emptyStr(BIND_DN) else (BIND_DN, BIND_PASSWORD, SIMPLE)
 
-        if BIND_DN is not None and BIND_DN != '':
-            c = Connection(server, auto_bind = True, client_strategy = SYNC, user=BIND_DN, password=BIND_PASSWORD, authentication=SIMPLE, check_names=True)
-        else:
-            c = Connection(server, auto_bind = True, client_strategy = SYNC, user=None, password=None, authentication=ANONYMOUS, check_names=True)
+        c = Connection(server, \
+                       auto_bind = True, \
+                       client_strategy = SYNC, \
+                       user=_user, \
+                       password=_pass, \
+                       authentication=_auth, \
+                       check_names=True)
 
     except Exception as e:
         error = "Error connecting to LDAP server: %s" % e
         raise LDAPLoginError({"error_message": error})
 
     try:
-        if(SEARCH_SUFFIX is not None and SEARCH_SUFFIX != ''):
-            search_filter = '(%s=%s)' % (SEARCH_PROPERTY, username + SEARCH_SUFFIX)
-        else:
-            search_filter = '(%s=%s)' % (SEARCH_PROPERTY, username)
+        #if not emptyStr(SEARCH_SUFFIX):
+        #    search_filter = '(%s=%s)' % (SEARCH_PROPERTY, username + SEARCH_SUFFIX)
+        #else:
+        #    search_filter = '(%s=%s)' % (SEARCH_PROPERTY, username)
+
+        search_filter = '(%s=%s)' % (SEARCH_PROPERTY, username + SEARCH_SUFFIX if not emptyStr(SEARCH_SUFFIX) else '')
+
         if SEARCH_FILTER:
             search_filter = '(&%s(%s))' % (search_filter, SEARCH_FILTER)
-        if (SEARCH_CUSTOM_FILTER is not None and SEARCH_CUSTOM_FILTER != ''):
+        if not emptyStr(SEARCH_CUSTOM_FILTER):
             search_filter = SEARCH_CUSTOM_FILTER.format(username=username)
+
         c.search(search_base = SEARCH_BASE,
                  search_filter = search_filter,
                  search_scope = SUBTREE,
@@ -88,14 +94,17 @@ def login(username: str, password: str) -> tuple:
             resp = c.response
             dn = resp.get('dn')
             user_name = getAttrByName(resp, USERNAME_PROPERTY)
-            #user_name = c.response[0].get('raw_attributes').get(USERNAME_PROPERTY)[0]
-            user_name = username if ((user_name is None) or (user_name == ''))
+            user_name = username if emptyStr(user_name) else user_name
             user_email = getAttrByName(resp, EMAIL_PROPERTY)
             full_name = getAttrByName(resp, FULL_NAME_PROPERTY)
-            is_admin = (getAttrByName(resp, FULL_NAME_PROPERTY) == 'admin')
-            #user_email = c.response[0].get('raw_attributes').get(EMAIL_PROPERTY)[0].decode('utf-8')
-            #full_name = c.response[0].get('raw_attributes').get(FULL_NAME_PROPERTY)[0].decode('utf-8')
-            user_conn = Connection(server, auto_bind = True, client_strategy = SYNC, user = dn, password = password, authentication = SIMPLE, check_names = True)
+            is_admin = (getAttrByName(resp, ROLE_PROPERTY) == 'admin')
+            user_conn = Connection(server, \
+                                   auto_bind = True, \
+                                   client_strategy = SYNC, \
+                                   user = dn, \
+                                   password = password, \
+                                   authentication = SIMPLE, \
+                                   check_names = True)
 
             return (user_name, user_email, full_name, is_admin)
 
