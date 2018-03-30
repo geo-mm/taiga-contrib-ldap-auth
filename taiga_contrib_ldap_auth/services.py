@@ -25,7 +25,7 @@ from . import connector
 
 
 @tx.atomic
-def ldap_register(username: str, email: str, full_name: str):
+def ldap_register(username: str, email: str, full_name: str, is_superuser: bool):
     """
     Register a new user from LDAP.
 
@@ -42,9 +42,10 @@ def ldap_register(username: str, email: str, full_name: str):
     except user_model.DoesNotExist:
         # Create a new user
         username_unique = slugify_uniquely(username, user_model, slugfield="username")
-        user = user_model.objects.create(email=email,
-                                         username=username_unique,
-                                         full_name=full_name)
+        user = user_model.objects.create(email=email,\
+                                         username=username_unique,\
+                                         full_name=full_name,\
+                                         is_superuser=is_superuser)
         user_registered_signal.send(sender=user.__class__, user=user)
 
     return user

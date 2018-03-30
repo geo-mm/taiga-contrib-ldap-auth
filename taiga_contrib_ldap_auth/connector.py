@@ -91,7 +91,7 @@ def login(username: str, password: str) -> tuple:
                  paged_size = 5)
 
         if len(c.response) > 0:
-            resp = c.response
+            resp = c.response[0]
             dn = resp.get('dn')
             user_name = getAttrByName(resp, USERNAME_PROPERTY)
             user_name = username if emptyStr(user_name) else user_name
